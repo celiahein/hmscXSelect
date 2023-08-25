@@ -1,0 +1,2 @@
+"0","beta = matrix(rnorm(ns*nc), ncol= ns, nrow= nc)"
+"0","eps = matrix(rnorm(ns*ny), ncol = ns, nrow= ny)"

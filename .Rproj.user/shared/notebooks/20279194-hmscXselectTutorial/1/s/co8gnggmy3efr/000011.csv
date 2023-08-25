@@ -1,0 +1,98 @@
+"0","nChains = 2"
+"0","thin = 1"
+"0","samples = 1000"
+"0","transient = 0"
+"0","verbose = 0"
+"0",""
+"0",""
+"0","models = list()"
+"0","for(dataset in 1:3){"
+"0","  tmp = list()"
+"0","for (model in 1:3){"
+"0","        m = Hmsc(Y = Y[[dataset]], XData = XData, XFormula = ~.,"
+"0","        XSelect = XSelect[[model]], distr = ""normal"")"
+"0","        m = sampleMcmc(m, thin = thin, samples = samples,"
+"0","        transient = transient, nChains = nChains,"
+"0","        verbose = verbose)"
+"0","        tmp[[model]] = m"
+"0","    }"
+"0","  models[[dataset]] = tmp"
+"0","}"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"1","Computing chain 2
+"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"1","Computing chain 2
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"1","Computing chain 2
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"1","Computing chain 2
+"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"1","Computing chain 2
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"1","Computing chain 2
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"1","Computing chain 2
+"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"1","Computing chain 2
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"2","setting updater$GammaEta=FALSE due to absence of random effects included to the model
+"
+"1","Computing chain 1
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"
+"1","Computing chain 2
+"
+"2","setting updater$Gamma2=FALSE due to X is not a matrix
+"

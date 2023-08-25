@@ -1,0 +1,4 @@
+"0","ny=20"
+"0","nc=10"
+"0","ns=10"
+"0","XData= data.frame(matrix(rnorm(ny*nc), ncol=nc, nrow=ny))"

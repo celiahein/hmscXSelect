@@ -1,0 +1,3 @@
+"0","Beta.FULL = beta"
+"0","L.FULL = X %*% Beta.FULL"
+"0","Y.FULL = L.FULL + eps"

@@ -1,0 +1,370 @@
+---
+title: "HMSC X Select Tutorial"
+output: html_notebook
+---
+
+This is my workthrough of the XSelect variable selection in HMSC. The link below will take you to an online version of the book. 
+
+
+https://www.cambridge.org/core/books/joint-species-distribution-modelling/evaluating-model-fit-and-selecting-among-multiple-models/ACDCCE8A4D61C3610354DFCD84AC5389
+
+### 9.4.2 Simulated Case Study with HMSC
+
+```{r}
+library(Hmsc)
+library(tidyverse)
+```
+
+9.4.2 Simulated Case Study with HMSC
+To examine the performance of the slab and spike prior in variable selection, we simulate a case study where variable selection can be expected to be required: a dataset with many covariates but a small number of sampling units. We consider a community of ns = 10 species sampled in ny = 20 sampling units, and we focus on examining which of the nc = 10 potential environmental covariates are most influential and thus should be kept in the model. To keep the example as simple as possible, we assume that the data are normally distributed, and we do not include species traits, phylogenies or random effects.
+
+We will generate three datasets that differ from each other in the set of covariates that influence the community data. We start by simulating variation in ten environmental covariates over the ny sampling units. In the script below, we assume that each of the covariates follows the standard normal distribution, and we store the covariates in the dataframe XData.
+
+
+```{r}
+ny=20
+nc=10
+ns=10
+XData= data.frame(matrix(rnorm(ny*nc), ncol=nc, nrow=ny))
+X = cbind(rep(1,ny), as.matrix(XData))
+nc = nc + 1
+```
+
+
+
+In the script above, we have also constructed an X matrix that includes the intercept in addition to the covariates. As the inclusion of the intercept adds one column to the X matrix, we have nc = 11, and thus there are eleven parameters to be estimated for each species. We next simulate the responses of the ns = 10 species to the environmental covariates.
+
+
+```{r}
+beta = matrix(rnorm(ns*nc), ncol= ns, nrow= nc)
+eps = matrix(rnorm(ns*ny), ncol = ns, nrow= ny)
+```
+
+
+In the script above, we sample both the species-specific regression parameters βkj and the residuals εij from the standard normal distribution. To make the three datasets as comparable as possible, we will include the same residuals to all three datasets.
+
+In the first dataset (called henceforth Data FULL), we assume that all covariates do matter. Thus, in the script below, we construct the linear predictor as usual, and add the residuals to form the species data.
+
+
+
+
+```{r}
+Beta.FULL = beta
+L.FULL = X %*% Beta.FULL
+Y.FULL = L.FULL + eps
+```
+
+
+In the second dataset (called henceforth Data JOINT), we assume that the first environmental covariate (k = 2) matters for all species, but that the remaining nine environmental covariates do not influence any of the species. In the name Data JOINT, the word JOINT stands for the covariate that jointly influences all species. Additionally, we include a regression parameter related to the intercept (k = 1) for all species. To follow the notation introduced above, we make these choices by constructing the matrix P, with pkj = 1 if covariate k is selected for species j, and pkj = 0 if covariate k is not selected for species j.
+
+
+```{r}
+p.JOINT = matrix(1, ncol=ns, nrow=nc)
+
+for (k in 3:nc){
+  p.JOINT[k,]=0
+}
+
+beta.JOINT = p.JOINT*beta
+L.JOINT = (X %*% beta.JOINT)
+Y.JOINT = L.JOINT + eps
+```
+
+
+
+In the third dataset (called henceforth Data SEPARATE), we assume that different species respond to different sets of environmental covariates. More precisely, in the script below we assume that the first species responds to the first environmental covariate, the second species to the second environmental covariate, and so on until the tenth species responds to the tenth environmental covariate. We additionally include the intercept for all species. In the name Data SEPARATE, the word SEPARATE stands for the covariates that separately influence the different species.
+
+```{r}
+p.SEPARATE = matrix(1, ncol = ns,nrow = nc)
+
+for (j in 1:ns){
+  for (k in 2:nc){
+    if (k-1 !=j){
+      p.SEPARATE[k,j] = 0
+    }
+  }
+}
+
+beta.SEPARATE =  p.SEPARATE * beta
+L.SEPARATE = (X %*% beta.SEPARATE)
+Y.SEPARATE = L.SEPARATE + eps
+```
+
+
+To run the HMSC analyses in a compact notation, we combine the three datasets and the three sets of true values of the regression parameters into lists:
+
+
+```{r}
+Y = list(Y.FULL, Y.JOINT, Y.SEPARATE)
+beta = list(Beta.FULL, beta.JOINT, beta.SEPARATE)
+```
+
+
+Variable selection is implemented in Hmsc through the input argument XSelect of the Hmsc function. We will apply variable selection in three different ways. In Model FULL, we will force the inclusion of all covariates, and thus not perform variable selection at all. In Model JOINT, we will select each variable jointly for all species. In Model SEPARATE, we will select each variable separately for each species. In this way, Data FULL is compatible with Model FULL, Data JOINT is compatible with Model JOINT and Data SEPARATE is compatible with Model SEPARATE. Fitting each of the three models to each of the three datasets will show whether the models that are best compatible with the data are able to select the right covariates. It will also show what happens when one fits a model where the variable selection setup is not compatible with the data.
+
+The script below defines the object XSelect for the three model variants.
+
+
+```{r}
+qq = 0.1 #prior probability for a covariate to be included
+
+#1: No variable selection
+XSelect.FULL = NULL
+
+#2: Variable selection jointly for all species
+XSelect.JOINT = list()
+
+for (k in 2:nc){
+  covGroup = k
+  spGroup = rep(1, ns)
+  q = rep(qq, max(spGroup))
+  XSelect.JOINT[[k-1]] = list(covGroup = covGroup,
+  spGroup = spGroup, q = q)
+}
+
+#3: Variable selection separately for each species
+
+XSelect.SEPARATE = list()
+
+for (k in 2:nc){
+  covGroup = k
+  spGroup = 1:ns
+  q = rep(qq, max(spGroup))
+  XSelect.SEPARATE[[k-1]] = list(covGroup = covGroup,
+  spGroup = spGroup,q = q)
+}
+
+XSelect = list(XSelect.FULL, XSelect.JOINT, XSelect.SEPARATE)
+```
+
+
+In the script above, XSelect.FULL is set to NULL, corresponding to
+no covariate selection and thus the inclusion of all covariates. XSelect.
+JOINT and XSelect.SEPARATE are both lists of length ten, with each element of the list describing how each of the ten environmental covariates
+is to be selected.
+
+To illustrate how variable selection is set up, let us look at the third
+element of the list XSelect.JOINT.
+
+```{r}
+XSelect.JOINT[[3]]
+```
+
+This element indicates that variable selection is to be applied for the
+covariate that is found from column four of the X matrix. We recall that
+column four corresponds to the third environmental covariate, as the
+first column of X corresponds to the intercept (which one typically
+wishes to include in any model). All species belong to species group 1,
+and thus the covariate is selected for all species jointly. A priori, we have
+assumed that this covariate should be included in the model with a
+probability of 0.1.
+As another example, let us look at the third element of the list XSelect.
+SEPARATE.
+
+```{r}
+XSelect.SEPARATE[[3]]
+```
+
+
+This element also concerns the selection of the covariate found from
+column four of the X matrix. However, now each species belongs to its
+own group, and thus the covariate is selected independently for each
+species. The prior probability by which the covariate is to be selected is
+now a vector, with each value giving the prior probability by which the
+covariate is to be included for each species.
+
+We are now ready to set up and fit the HMSC models.
+
+
+```{r}
+nChains = 2
+thin = 1
+samples = 1000
+transient = 0
+verbose = 0
+
+
+models = list()
+for(dataset in 1:3){
+  tmp = list()
+for (model in 1:3){
+        m = Hmsc(Y = Y[[dataset]], XData = XData, XFormula = ~.,
+        XSelect = XSelect[[model]], distr = "normal")
+        m = sampleMcmc(m, thin = thin, samples = samples,
+        transient = transient, nChains = nChains,
+        verbose = verbose)
+        tmp[[model]] = m
+    }
+  models[[dataset]] = tmp
+}
+```
+
+With the script above, we have included all nine cases (three models
+fitted to each of the three datasets) into the object models, so that the
+HMSC object of a given dataset and model is found from models
+[[dataset]][[model]]. Note that we have included the linear effects of all
+ten covariates included in the dataframe XData with XFormula = ~.
+Figure 9.4 evaluates the MCMC convergence of the β parameters in
+terms of the potential scale reduction factors. MCMC convergence is
+better when variable selection is not applied (panels A, D and G). This
+can be expected, as variable selection requires additional MCMC steps
+for sampling the indicator parameters pkj describing which variables are to
+be selected and which are not.
+
+
+Let us next examine whether variable selection with spike and slab was
+successful in selecting the right covariates. To do so, we compute for
+each βkj parameter the posterior probability by which the parameter was
+selected. We note that the posterior probability for the βkj parameter
+being selected – and hence being non-zero – equals the posterior mean
+of the indicator variable pkj, i.e. Pr(βkj 6¼0) = E[pkj]. With the script
+below, we construct Figure 9.5, which illustrates the true value of each
+βkj parameter in the x-axis, and the posterior probabilities by which the
+covariate k is selected for species j (i.e. βkj is estimated to be non-zero) in the y-axis.
+
+
+```{r, fig.height=12, fig.width=12}
+par(mfrow = c(3,3))
+for(dataset in 1:3){
+    for (model in 1:3){
+          postBeta = getPostEstimate(models[[dataset]][[model]],
+          parName = "Beta")
+          Ep = as.vector(postBeta$support + postBeta$supportNeg)
+          true.beta = as.vector(beta[[dataset]])
+          plot(true.beta[!true.beta==0], Ep [!true.beta==0],
+          ylim = c(0,1), xlab = "true beta", ylab = "E[p]",
+          main = paste0("Data ", as.character(dataset),
+          ", Model ", as.character(model)))
+          points(runif(sum(true.beta==0), min = -0.1, max = 0.1),
+          Ep[true.beta==0],pch = 19)
+    }
+}
+```
+
+
+If variable selection worked perfectly, the open dots in Figure 9.5
+would be located at E[p] = 1 and the filled dots would be located at
+E[p] = 0. In the uppermost row of panels corresponding to Data
+FULL, the data generating the model assumed that all covariates matter,
+and thus we would have liked to see all covariates to be selected for all
+species. This is trivially the case of Model FULL (panel A), for which
+model selection is not applied at all. For Model JOINT (panel B) and
+Model SEPARATE (panel C), only a subset of the regression parameters is
+selected with a probability of one. Especially inModel SEPARATE, many
+of the regression parameters have E[p] close to zero and thus are not
+selected. However, we note that is not entirely terrible; this is especially
+the case for those βkj for which the value is close to zero, and thus the true effect of is small, hence it may not make a big difference if the covariate is excluded.
+
+In the middle row of the panels corresponding to Data JOINT, the
+data generating model assumed that one of the covariates influences all
+species, and the remaining nine covariates do not influence any of the
+species. Model JOINT, which selects the covariates jointly for all species,
+does a perfect job in finding the relevant covariate: it includes the
+relevant covariate with a probability of one, and the irrelevant covariates
+with a probability of zero (Figure 9.5E). Model SEPARATE, which
+selects the covariates individually for each species, also does relatively
+well in selecting the relevant covariates (Figure 9.5F), though not quite as
+well as Model JOINT. The superior performance of Model JOINT
+compared to Model SEPARATE is to be expected, as Model JOINT
+utilises the additional information that each covariate matters either for all or none of the species, making the task of variable selection easier.
+
+In the lowermost row of the panels corresponding to Data SEPARATE,
+the data generating model assumed that each species is influenced
+by one covariate that differs for each species. As expected, now Model
+SEPARATE is most in line with the data generating model, i.e. it works
+the best for dropping out the irrelevant covariates (Figure 9.5I). 
+
+As Model JOINT selects the covariates jointly for all species, it cannot
+replicate the assumptions of the data generating model. Model JOINT
+has dropped some of the covariates with a probability of one, perhaps
+because they had little effect, even for the species that they did influence.
+For other covariates, Model JOINT shows uncertainty in whether they
+should be included or not.
+
+
+Let us next examine how variable selection influences the explanatory
+and predictive powers of the models. We start by computing explanatory
+power in terms of R2.
+
+
+*My results here are different than in the book*
+
+```{r}
+meR2 = matrix(NA, nrow = 3, ncol = 3)
+
+for(dataset in 1:3){
+    for (model in 1:3){
+        m = models[[dataset]][[model]]
+        predY = computePredictedValues(m)
+        MF = evaluateModelFit(m, predY = predY)
+        meR2[dataset, model] = mean(MF$R2)
+    }
+}
+
+meR2
+```
+
+
+We observe that for all three datasets, the mean explanatory power
+(averaged over the species) is the highest for Model FULL (column 1). This is to be expected, as explanatory power generally increases with the number of
+covariates included in the model. However, part of the success in
+explaining the data may be due to overfitting, i.e. explaining noise rather
+than signal. To study the extent to which this is the case, we evaluate
+predictive power in terms of two-fold cross-validation. We note that as
+we have data on twenty sampling units, the predictions will be based on
+models fitted to ten sampling units only.
+
+*My results here are different than in the book*
+```{r}
+partition = createPartition(models[[1]][[1]], nfolds = 2)
+
+meR2CV = matrix(NA, nrow = 3, ncol = 3)
+
+for(dataset in 1:3){
+    for (model in 1:3){
+        m = models[[dataset]][[model]]
+        predY = computePredictedValues(m, partition = partition)
+        MFCV = evaluateModelFit(m, predY = predY)
+        meR2CV[dataset, model] = mean(MFCV$R2)
+    }
+}
+
+meR2CV
+```
+
+As is generally the case, the predictive powers are lower than the
+explanatory powers. Model FULL has the best predictive power for Data
+FULL, Model JOINT has the best predictive power for Data JOINT,
+and Model SEPARATE has the best predictive power for Data SEPARATE.
+This is reassuring, as it means that the models that were structurally
+in line with the data yielded the best predictions. In particular, in the
+cases of Data JOINT and Data SEPARATE, variable selection not only
+identified the covariates that actually did matter, but also helped to make
+better predictions. In the case of Data SEPARATE, the predictive power
+of Model FULL is almost as good as that of Model SEPARATE,
+showing that for the sake of predictive performance it may not be so
+critical whether the regression coefficients are estimated to be close to
+zero or exactly zero.
+
+Let us then compute the WAIC for these same cases.
+
+*My results here are different than in the book*
+```{r}
+WAIC = matrix(NA, nrow = 3, ncol = 3)
+
+for(dataset in 1:3){
+    for (model in 1:3){
+        WAIC[dataset, model] =
+        computeWAIC(models[[dataset]][[model]])
+    }
+}
+WAIC
+```
+
+Model FULL has the lowest WAIC for the Data FULL, and Model
+JOINT has the lowest WAIC for the Data JOINT. The lowest WAIC
+for the Data SEPARATE is however not obtained by Model SEPARATE,
+but by Model FULL, although the difference between these two is
+small. This reflects the above results that Models FULL and SEPARATE
+performed essentially equally well also in terms of cross-validation.
+
